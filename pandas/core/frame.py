@@ -627,39 +627,6 @@ class DataFrame(NDFrame):
 
         return buf.getvalue()
 
-    def _repr_html_(self):
-        """
-        Return a html representation for a particular DataFrame.
-        Mainly for IPython notebook.
-        """
-        # qtconsole doesn't report its line width, and also
-        # behaves badly when outputting an HTML table
-        # that doesn't fit the window, so disable it.
-        # XXX: In IPython 3.x and above, the Qt console will not attempt to
-        # display HTML, so this check can be removed when support for
-        # IPython 2.x is no longer needed.
-        if com.in_qtconsole():
-            # 'HTML output is disabled in QtConsole'
-            return None
-
-        if self._info_repr():
-            buf = StringIO(u(""))
-            self.info(buf=buf)
-            # need to escape the <class>, should be the first line.
-            val = buf.getvalue().replace('<', r'&lt;', 1)
-            val = val.replace('>', r'&gt;', 1)
-            return '<pre>' + val + '</pre>'
-
-        if get_option("display.notebook_repr_html"):
-            max_rows = get_option("display.max_rows")
-            max_cols = get_option("display.max_columns")
-            show_dimensions = get_option("display.show_dimensions")
-
-            return self.to_html(max_rows=max_rows, max_cols=max_cols,
-                                show_dimensions=show_dimensions, notebook=True)
-        else:
-            return None
-
     @property
     def style(self):
         """
@@ -1650,60 +1617,6 @@ class DataFrame(NDFrame):
         if buf is None:
             result = formatter.buf.getvalue()
             return result
-
-    @Substitution(header='whether to print column labels, default True')
-    @Appender(fmt.docstring_to_string, indents=1)
-    def to_html(self, buf=None, columns=None, col_space=None, header=True,
-                index=True, na_rep='NaN', formatters=None, float_format=None,
-                sparsify=None, index_names=True, justify=None, bold_rows=True,
-                classes=None, escape=True, max_rows=None, max_cols=None,
-                show_dimensions=False, notebook=False, decimal='.',
-                border=None):
-        """
-        Render a DataFrame as an HTML table.
-
-        `to_html`-specific options:
-
-        bold_rows : boolean, default True
-            Make the row labels bold in the output
-        classes : str or list or tuple, default None
-            CSS class(es) to apply to the resulting html table
-        escape : boolean, default True
-            Convert the characters <, >, and & to HTML-safe sequences.=
-        max_rows : int, optional
-            Maximum number of rows to show before truncating. If None, show
-            all.
-        max_cols : int, optional
-            Maximum number of columns to show before truncating. If None, show
-            all.
-        decimal : string, default '.'
-            Character recognized as decimal separator, e.g. ',' in Europe
-
-            .. versionadded:: 0.18.0
-        border : int
-            A ``border=border`` attribute is included in the opening
-            `<table>` tag. Default ``pd.options.html.border``.
-
-            .. versionadded:: 0.19.0
-        """
-
-        formatter = fmt.DataFrameFormatter(self, buf=buf, columns=columns,
-                                           col_space=col_space, na_rep=na_rep,
-                                           formatters=formatters,
-                                           float_format=float_format,
-                                           sparsify=sparsify, justify=justify,
-                                           index_names=index_names,
-                                           header=header, index=index,
-                                           bold_rows=bold_rows, escape=escape,
-                                           max_rows=max_rows,
-                                           max_cols=max_cols,
-                                           show_dimensions=show_dimensions,
-                                           decimal=decimal)
-        # TODO: a generic formatter wld b in DataFrameFormatter
-        formatter.to_html(classes=classes, notebook=notebook, border=border)
-
-        if buf is None:
-            return formatter.buf.getvalue()
 
     def info(self, verbose=None, buf=None, max_cols=None, memory_usage=None,
              null_counts=None):

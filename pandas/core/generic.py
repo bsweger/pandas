@@ -45,11 +45,12 @@ import pandas.core.algorithms as algos
 import pandas.core.common as com
 import pandas.core.missing as missing
 from pandas.io.formats.printing import pprint_thing
-from pandas.io.formats.format import format_percentiles, DataFrameFormatter
+from pandas.io.formats.format import (format_percentiles, DataFrameFormatter,
+                                      docstring_to_string)
 from pandas.tseries.frequencies import to_offset
 from pandas import compat
 from pandas.compat.numpy import function as nv
-from pandas.compat import (map, zip, lzip, lrange, string_types,
+from pandas.compat import (map, zip, lzip, lrange, string_types, StringIO, u,
                            isidentifier, set_function_name, cPickle as pkl)
 from pandas.core.ops import _align_method_FRAME
 import pandas.core.nanops as nanops
@@ -1177,6 +1178,39 @@ class NDFrame(PandasObject, SelectionMixin):
     # ----------------------------------------------------------------------
     # IO
 
+    def _repr_html_(self):
+        """
+        Return a html representation for a particular DataFrame.
+        Mainly for IPython notebook.
+        """
+        # qtconsole doesn't report its line width, and also
+        # behaves badly when outputting an HTML table
+        # that doesn't fit the window, so disable it.
+        # XXX: In IPython 3.x and above, the Qt console will not attempt to
+        # display HTML, so this check can be removed when support for
+        # IPython 2.x is no longer needed.
+        if com.in_qtconsole():
+            # 'HTML output is disabled in QtConsole'
+            return None
+
+        if self._info_repr():
+            buf = StringIO(u(""))
+            self.info(buf=buf)
+            # need to escape the <class>, should be the first line.
+            val = buf.getvalue().replace('<', r'&lt;', 1)
+            val = val.replace('>', r'&gt;', 1)
+            return '<pre>' + val + '</pre>'
+
+        if config.get_option("display.notebook_repr_html"):
+            max_rows = config.get_option("display.max_rows")
+            max_cols = config.get_option("display.max_columns")
+            show_dimensions = config.get_option("display.show_dimensions")
+
+            return self.to_html(max_rows=max_rows, max_cols=max_cols,
+                                show_dimensions=show_dimensions, notebook=True)
+        else:
+            return None
+
     def _repr_latex_(self):
         """
         Returns a LaTeX representation for a particular object.
@@ -1740,6 +1774,62 @@ class NDFrame(PandasObject, SelectionMixin):
                            encoding=encoding, multicolumn=multicolumn,
                            multicolumn_format=multicolumn_format,
                            multirow=multirow)
+
+        if buf is None:
+            return formatter.buf.getvalue()
+
+    _shared_docs['to_html'] = """
+        Render a DataFrame as an HTML table.
+
+        `to_html`-specific options:
+
+        bold_rows : boolean, default True
+            Make the row labels bold in the output
+        classes : str or list or tuple, default None
+            CSS class(es) to apply to the resulting html table
+        escape : boolean, default True
+            Convert the characters <, >, and & to HTML-safe sequences.=
+        max_rows : int, optional
+            Maximum number of rows to show before truncating. If None, show
+            all.
+        max_cols : int, optional
+            Maximum number of columns to show before truncating. If None, show
+            all.
+        decimal : string, default '.'
+            Character recognized as decimal separator, e.g. ',' in Europe
+
+            .. versionadded:: 0.18.0
+        border : int
+            A ``border=border`` attribute is included in the opening
+            `<table>` tag. Default ``pd.options.html.border``.
+
+            .. versionadded:: 0.19.0
+        """
+
+    @Substitution(header='whether to print column labels, default True')
+    @Appender(docstring_to_string, indents=1)
+    def to_html(self, buf=None, columns=None, col_space=None, header=True,
+                index=True, na_rep='NaN', formatters=None, float_format=None,
+                sparsify=None, index_names=True, justify=None, bold_rows=True,
+                classes=None, escape=True, max_rows=None, max_cols=None,
+                show_dimensions=False, notebook=False, decimal='.',
+                border=None):
+        if self.ndim == 1:
+            self = self.to_frame()
+        formatter = DataFrameFormatter(self, buf=buf, columns=columns,
+                                       col_space=col_space, na_rep=na_rep,
+                                       formatters=formatters,
+                                       float_format=float_format,
+                                       sparsify=sparsify, justify=justify,
+                                       index_names=index_names,
+                                       header=header, index=index,
+                                       bold_rows=bold_rows, escape=escape,
+                                       max_rows=max_rows,
+                                       max_cols=max_cols,
+                                       show_dimensions=show_dimensions,
+                                       decimal=decimal)
+        # TODO: a generic formatter wld b in DataFrameFormatter
+        formatter.to_html(classes=classes, notebook=notebook, border=border)
 
         if buf is None:
             return formatter.buf.getvalue()
