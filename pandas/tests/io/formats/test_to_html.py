@@ -8,7 +8,7 @@ from distutils.version import LooseVersion
 import pytest
 import numpy as np
 import pandas as pd
-from pandas import compat, DataFrame, MultiIndex, option_context, Index
+from pandas import compat, DataFrame, MultiIndex, option_context, Index, Series
 from pandas.compat import u, lrange, StringIO
 from pandas.util import testing as tm
 import pandas.io.formats.format as fmt
@@ -1881,3 +1881,72 @@ class TestToHTML(object):
                                                         name='myindexname'))
         result = df.to_html(index_names=False)
         assert 'myindexname' not in result
+
+    def test_to_html_series_index(self):
+        s = Series([1, 2], index=['a', 'b'])
+        withindex_result = s.to_html()
+        withindex_expected = dedent("""\
+        <table border="1" class="dataframe">
+          <thead>
+            <tr style="text-align: right;">
+              <th></th>
+              <th>0</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>a</th>
+              <td>1</td>
+            </tr>
+            <tr>
+              <th>b</th>
+              <td>2</td>
+            </tr>
+          </tbody>
+        </table>""")
+        assert withindex_result == withindex_expected
+
+    def test_to_html_series_index_false(self):
+        s = Series([1, 2], index=['a', 'b'])
+        indexfalse_result = s.to_html(index=False)
+        indexfalse_expected = dedent("""\
+        <table border="1" class="dataframe">
+          <thead>
+            <tr style="text-align: right;">
+              <th>0</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+            </tr>
+            <tr>
+              <td>2</td>
+            </tr>
+          </tbody>
+        </table>""")
+        assert indexfalse_result == indexfalse_expected
+
+    def test_to_html_series_no_index(self):
+        s = Series([1, 2])
+        withoutindex_result = s.to_html()
+        withoutindex_expected = dedent("""\
+        <table border="1" class="dataframe">
+          <thead>
+            <tr style="text-align: right;">
+              <th></th>
+              <th>0</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>0</th>
+              <td>1</td>
+            </tr>
+            <tr>
+              <th>1</th>
+              <td>2</td>
+            </tr>
+          </tbody>
+        </table>""")
+        assert withoutindex_result == withoutindex_expected
